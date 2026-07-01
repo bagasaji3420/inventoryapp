@@ -1,0 +1,204 @@
+@extends('Admin.Layouts.app')
+
+@section('content')
+    <h4 class="mb-1">Barang Masuk</h4>
+    <p class="mb-6 text-muted">Data Barang Masuk</p>
+
+    @if ($errors->any())
+        <div class="alert alert-danger">
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    <div class="card">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStockInModal"
+                @cannot('stock-ins.create') disabled @endcannot>
+                Tambah Data
+            </button>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
+                    data-bs-target="#filterStockInModal">
+                    <i class="bx bx-filter-alt"></i> Filter Tanggal
+                </button>
+                <a href="{{ route('stock-ins.export-excel', request()->only(['tanggal_awal', 'tanggal_akhir'])) }}"
+                    class="btn btn-outline-success">
+                    <i class="bx bxs-file-export"></i> Excel
+                </a>
+                <a href="{{ route('stock-ins.export-pdf', request()->only(['tanggal_awal', 'tanggal_akhir'])) }}"
+                    target="_blank" class="btn btn-outline-danger">
+                    <i class="bx bxs-file-pdf"></i> PDF
+                </a>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <h6 class="fw-bold mb-4">DATA BARANG MASUK</h6>
+
+            @if ($tanggalAwal || $tanggalAkhir)
+                <div class="alert alert-info d-flex justify-content-between align-items-center py-2">
+                    <span>
+                        Filter: {{ $tanggalAwal ?? '...' }} s/d {{ $tanggalAkhir ?? '...' }}
+                    </span>
+                    <a href="{{ route('stock-ins.index') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bx bx-x"></i> Reset
+                    </a>
+                </div>
+            @endif
+
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>ID Transaksi</th>
+                            <th>Supplier</th>
+                            <th>Tanggal</th>
+                            <th>Nama Barang</th>
+                            <th>Satuan</th>
+                            <th>Jumlah Masuk</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @php $no = 1; @endphp
+                        @foreach ($stockIns as $stockIn)
+                            @foreach ($stockIn->items as $row)
+                                <tr>
+                                    <td>{{ $no++ }}</td>
+                                    <td>{{ $stockIn->no_transaksi }}</td>
+                                    <td>{{ $stockIn->supplier->nama_supplier }}</td>
+                                    <td>{{ $stockIn->tanggal->format('Y-m-d') }}</td>
+                                    <td>{{ $row->item->nama_barang }}</td>
+                                    <td>{{ $row->unit->nama_satuan }}</td>
+                                    <td>{{ $row->qty_input }}</td>
+                                    @if ($loop->first)
+                                        <td rowspan="{{ $stockIn->items->count() }}">
+                                            <form action="{{ route('stock-ins.destroy', $stockIn->id) }}" method="POST"
+                                                class="delete-form">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-icon btn-danger btn-sm shadow-none"
+                                                    @cannot('stock-ins.delete') disabled @endcannot>
+                                                    <i class="bx bx-trash"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    @endif
+                                </tr>
+                            @endforeach
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            {{ $stockIns->links() }}
+        </div>
+    </div>
+
+    <!-- Modal Filter -->
+    <div class="modal fade" id="filterStockInModal">
+        <div class="modal-dialog">
+            <form method="GET" action="{{ route('stock-ins.index') }}" class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Filter Tanggal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Filter Cepat</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-quick-filter="week">
+                                Minggu Ini
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-quick-filter="month">
+                                Bulan Ini
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tanggal Awal</label>
+                            <input type="date" name="tanggal_awal" id="filterTanggalAwal" class="form-control"
+                                value="{{ $tanggalAwal }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tanggal Akhir</label>
+                            <input type="date" name="tanggal_akhir" id="filterTanggalAkhir" class="form-control"
+                                value="{{ $tanggalAkhir }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a href="{{ route('stock-ins.index') }}" class="btn btn-secondary">Reset</a>
+                    <button type="submit" class="btn btn-primary">Terapkan Filter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Tambah -->
+    <div class="modal fade" id="addStockInModal">
+        <div class="modal-dialog modal-lg">
+            <form method="POST" action="{{ route('stock-ins.store') }}" class="modal-content" id="stockInForm">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title">Tambah Barang Masuk</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Supplier</label>
+                            <select name="supplier_id" class="form-select" required>
+                                <option value="">Pilih Supplier</option>
+                                @foreach ($suppliers as $supplier)
+                                    <option value="{{ $supplier->id }}">{{ $supplier->nama_supplier }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tanggal</label>
+                            <input type="date" name="tanggal" class="form-control" required
+                                value="{{ now()->toDateString() }}">
+                        </div>
+                    </div>
+
+                    <label class="form-label">Barang</label>
+                    <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Barang</th>
+                                <th>Satuan</th>
+                                <th>Jumlah</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockInItemsBody"></tbody>
+                    </table>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="addStockInRow">
+                        <i class="bx bx-plus"></i> Tambah Barang
+                    </button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ asset('assets/custom-js/inventory/confirm-delete.js') }}"></script>
+    <script src="{{ asset('assets/custom-js/inventory/date-range-filter.js') }}"></script>
+    <script>
+        window.inventoryItems = @json($items->map(fn($item) => ['id' => $item->id, 'nama_barang' => $item->nama_barang, 'satuan_id' => $item->satuan_id]));
+        window.inventoryUnits = @json($units->map(fn($unit) => ['id' => $unit->id, 'nama_satuan' => $unit->nama_satuan]));
+    </script>
+    <script src="{{ asset('assets/custom-js/inventory/stock-in.js') }}"></script>
+@endsection
